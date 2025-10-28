@@ -62,7 +62,9 @@ class TaflNNet(nn.Module):
         f = f.reshape(N, R, S*S).transpose(1, 2)   # (N, S^2, R)
         g = g.reshape(N, R, S*S)                   # (N, R, S^2)
         logits_pairs = torch.bmm(f, g)             # (N, S^2, S^2)
-        pi_logits = logits_pairs.reshape(N, S*S*S*S)  # (N, 6561)
+        pi_logits = logits_pairs.transpose(1, 2)    # (N, S^2, S^2) = [to, from]
+        pi_logits = pi_logits.reshape(N, S*S*S*S)  # (N, 6561)
+        #pi_logits = logits_pairs.reshape(N, S*S*S*S)  # (N, 6561)
 
         # ---- value 头 ----
         v = F.relu(self.v_bn(self.v_conv(s)))   # (N,C//2,S,S)

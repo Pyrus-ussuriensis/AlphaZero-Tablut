@@ -118,6 +118,9 @@ class TaflGame(Game):
         #print("->",str(board))
         return str(board)
 
+    def BoardRepresentation(self, board):
+        return board.getPBR()
+
     def getScore(self, board, player):
         if board.done: return 1000*board.done*player
         return board.countDiff(player)

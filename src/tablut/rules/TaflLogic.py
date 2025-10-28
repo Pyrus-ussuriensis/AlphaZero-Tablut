@@ -29,6 +29,12 @@ class Board():
     def astype(self,t):
         return np.array(self.getImage()).astype(t)
 
+    def getPBR(self): # get pure board representation
+        img = self.getImage()
+        flat = ''.join(str(r) for v in img for r in v)
+        return f"{self.getPlayerToMove()}|{flat}" 
+
+
     def getCopy(self):
       gv=Tafl()
       gv.size=self.size

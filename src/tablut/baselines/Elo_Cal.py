@@ -16,6 +16,7 @@ def elo_vs_ab(W,D,L, base=1500):
     return base+delta, delta, ci, s, sp # 基础加差，差，误差上下界，胜率，平滑胜率
 
 def Evaluate_Model_with_Alpha_Beta(new_model, g, step=0, n=200, write=False):
+    print("start calculating Elo scores base on 2 layers alpha-beta tree algorithms")
     arena = Arena(player1=new_model, player2=AlphaBetaTaflPlayer(game=g, depth=2), game=g)
     W, L, D = arena.playGames(num=n)
     elo, delta, (lo,hi), s, sp = elo_vs_ab(W,D,L, base=1500)
@@ -29,4 +30,5 @@ def Evaluate_Model_with_Alpha_Beta(new_model, g, step=0, n=200, write=False):
         writer.add_scalar("eval/wins", W, step)
         writer.add_scalar("eval/draws", D, step)
         writer.add_scalar("eval/losses", L, step)
+    print(f"the Elo score is {elo}")
     return elo

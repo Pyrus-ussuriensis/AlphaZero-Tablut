@@ -96,5 +96,9 @@
 ## save args
 怀疑可能是数据量的问题，所以调节参数训练
 
-## MCTS endgame side fault, draw condition adjust
+## fix MCTS endgame side fault, draw condition adjust
 MCTS选择直接用1视角判断终局应该有误，应该以当前视角判断终局值。超过界限的局数改为平局，使用一个极小值表示。
+
+## fix model output fault and add rules about draw
+网络的输出部分应该是从输入坐标到输出坐标，所以矩阵reshape前要转置。
+增加三次循环平局规则，避免资源浪费。

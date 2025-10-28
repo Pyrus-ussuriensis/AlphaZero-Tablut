@@ -14,6 +14,8 @@ from tablut.models.MCTS import MCTS
 from tablut.models.Players import MCTSPlayer
 from tablut.baselines.Elo_Cal import Evaluate_Model_with_Alpha_Beta
 from tablut.utils.log import logger, writer
+from tablut.utils.ThreefoldRepetition import ThreefoldRepetition
+from tablut.Args import args
 
 class Coach():
     """
@@ -51,6 +53,8 @@ class Coach():
         """
         trainExamples = []
         board = self.game.getInitBoard()
+        threefold = ThreefoldRepetition(k=3)
+        threefold.add_and_check(self.game.BoardRepresentation(board))
         self.curPlayer = 1
         episodeStep = 0
 
@@ -76,11 +80,16 @@ class Coach():
             #trainExamples.append([canonicalBoard.astype(np.float32), self.curPlayer, pi, None]) # 添加了从board到矩阵的转化，是否数据能够被网络处理
 
 
-            action = np.random.choice(len(pi), p=pi)
-            board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
+            board, self.curPlayer = self.game.getNextState(board, self.curPlayer, np.random.choice(len(pi), p=pi))
+            #action = np.random.choice(len(pi), p=pi)
+            #board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
 
             # 以1为基准，然后看是否和1相等，其检测的结果就是原对象值
             r = self.game.getGameEnded(board, 1)
+            # 记录状态，计数
+            cnt = threefold.add_and_check(self.game.BoardRepresentation(canonicalBoard))
+            if cnt:
+                r = args.draw
 
             if r != 0:
                 return [(x[0], x[2], r * (x[1]), x[3], x[4]) for x in trainExamples]
@@ -147,7 +156,6 @@ class Coach():
             writer.add_scalar("self/score_rate", score_rate, i)
             win_rate = float(nwins) / (pwins + nwins) if (pwins+nwins) > 0 else float('nan')
             writer.add_scalar("self/win_rate", win_rate, i)
-            Evaluate_Model_with_Alpha_Beta(new_model=nmcts_player, g=self.game, step=i, n=self.args.evaluate, write=True)
 
             if pwins + nwins == 0 or win_rate < self.args.updateThreshold:
                 logger.info('REJECTING NEW MODEL')
@@ -156,6 +164,7 @@ class Coach():
                 logger.info('ACCEPTING NEW MODEL')
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename=self.getCheckpointFile(i))
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='best.pth.tar')
+                Evaluate_Model_with_Alpha_Beta(new_model=nmcts_player, g=self.game, step=i, n=self.args.evaluate, write=True)
             self.save_iteration_checkpoints(i)
 
     def getCheckpointFile(self, iteration):

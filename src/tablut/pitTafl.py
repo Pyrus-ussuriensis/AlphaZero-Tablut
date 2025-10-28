@@ -41,9 +41,13 @@ a, b, c = AlphaBetaTaflPlayer(g,2), GreedyTaflPlayer(g), RandomPlayer(g)
 
 #print(arena.playGames(2, verbose=True))
 nnet = nn(g)
-pmcts_player = MCTSPlayer(g, nnet, args, temp=0)
+pnet = nn(g)
+nnet.load_checkpoint(args.checkpoint, args.load_folder_file)
+pnet.load_checkpoint(args.checkpoint, args.load_folder_file)
+pmcts_player = MCTSPlayer(g, pnet, args, temp=0)
+nmcts_player = MCTSPlayer(g, nnet, args, temp=0)
 
-n = 10
+n = 100
 def test_model(a, b, c, g, n): # 让a和b,c在g上处理n次
     arena = Arena.Arena(a, b, g)
     print(arena.playGames(n, verbose=False))
@@ -52,9 +56,9 @@ def test_model(a, b, c, g, n): # 让a和b,c在g上处理n次
     arena = Arena.Arena(b, c, g)
     print(arena.playGames(n, verbose=False))
 
-#test_model(a,b,c,g,n)
+test_model(nmcts_player,pmcts_player,c,g,n)
 from tablut.baselines.Elo_Cal import Evaluate_Model_with_Alpha_Beta
 #print(Evaluate_Model_with_Alpha_Beta(new_model=a, g=g))
 #print(Evaluate_Model_with_Alpha_Beta(new_model=b, g=g))
 #print(Evaluate_Model_with_Alpha_Beta(new_model=c, g=g))
-print(Evaluate_Model_with_Alpha_Beta(new_model=a, g=g, n=6))
+#print(Evaluate_Model_with_Alpha_Beta(new_model=a, g=g, n=6))
