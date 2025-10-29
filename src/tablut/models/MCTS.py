@@ -24,7 +24,7 @@ class MCTS():
         self.Vs = {}  # stores game.getValidMoves for board s
 
     # 控制总流程，进行MCTS，然后根据temp选择
-    def getActionProb(self, canonicalBoard, temp=1):
+    def getActionProb(self, canonicalBoard, temp=1, noise_s=True):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
@@ -40,18 +40,16 @@ class MCTS():
         root_s = self.game.stringRepresentation(canonicalBoard)
         for i in range(self.args.numMCTSSims):
             self.search(canonicalBoard)
-            # 在根扩展后（首轮）注入 Dirichlet 噪声，仅自博弈( temp>0 )使用
-            if (i == 0 and temp > 0 and
-                getattr(self.args, "noise_eps", 0) > 0 and
-                getattr(self.args, "dirichlet_alpha", 0) > 0 and
-                root_s in self.Ps):
+            # 在根扩展后（首轮）注入 Dirichlet 噪声
+            if (i == 0 and noise_s and getattr(self.args, "noise_eps", 0) > 0 and getattr(self.args, "dirichlet_alpha", 0) > 0 and root_s in self.Ps):
                 valids = self.Vs[root_s].astype(np.bool_)
                 if valids.sum() > 0:
-                    eta = np.random.dirichlet([self.args.dirichlet_alpha] * int(valids.sum()))
-                    dir_full = np.zeros_like(self.Ps[root_s], dtype=np.float64)
-                    dir_full[valids] = eta
-                    eps = float(self.args.noise_eps)
-                    self.Ps[root_s] = (1.0 - eps) * self.Ps[root_s] + eps * dir_full
+                    K = int(valids.sum())
+                    alpha0 = 10.0
+                    alpha = alpha0 / max(1, K)
+                    noise = np.zeros_like(self.Ps[root_s], dtype=np.float64)
+                    noise[valids] = np.random.dirichlet([alpha]*K)
+                    self.Ps[root_s] = (1 - self.args.noise_eps)*self.Ps[root_s] + self.args.noise_eps*noise
                     ssum = np.sum(self.Ps[root_s])
                     if ssum > 0:
                         self.Ps[root_s] /= ssum
@@ -132,18 +130,23 @@ class MCTS():
         cur_best = -float('inf')
         best_act = -1
 
+        legal = [a for a in range(self.game.getActionSize()) if valids[a]]
+        N_sum = self.Ns[s]
+        pb_c = math.log((N_sum + self.args.cpuct_c_base + 1) / self.args.cpuct_c_base) + self.args.cpuct_c_init
         # pick the action with the highest upper confidence bound
-        for a in range(self.game.getActionSize()):
-            if valids[a]:
-                if (s, a) in self.Qsa:
-                    u = self.Qsa[(s, a)] + self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s]) / ( # 综合数据对于是否选这条边的评估
-                            1 + self.Nsa[(s, a)])
-                else:
-                    u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
+        for a in legal:
+            if (s, a) in self.Qsa:
+                u = pb_c * self.Ps[s][a] * math.sqrt(N_sum) / (1 + self.Nsa.get((s,a),0))
+                u = self.Qsa.get((s,a),0) + u
+                #u = self.Qsa[(s, a)] + self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s]) / ( # 综合数据对于是否选这条边的评估
+                #        1 + self.Nsa[(s, a)])
+            else:
+                u = pb_c * self.Ps[s][a] * math.sqrt(N_sum) / (1 + self.Nsa.get((s,a),0))
+                #u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
 
-                if u > cur_best:
-                    cur_best = u
-                    best_act = a
+            if u > cur_best:
+                cur_best = u
+                best_act = a
 
         a = best_act
         next_s, next_player = self.game.getNextState(canonicalBoard, p, a)

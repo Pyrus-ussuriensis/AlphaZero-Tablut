@@ -15,7 +15,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from .TaflNNet import TaflNNet as onnet
+from tablut.models.MAZM import AlphaZeroNet_Tablut as onnet
 
 
 
@@ -28,7 +28,7 @@ args = dotdict({
     'batch_size': 64,   # 资源允许可128；不够就96（工程建议）
     'cuda': torch.cuda.is_available(),
     'num_channels': 128, # 轻量化以提高自博弈吞吐（工程建议）
-    "policy_rank": 32,   # 双线性from×to头的嵌入维；32在精度/显存间折中（工程建议）
+    "policy_rank": 64,   # 双线性from×to头的嵌入维；32在精度/显存间折中（工程建议）
 })
 
 
@@ -43,7 +43,16 @@ class NNetWrapper(NeuralNet):
             self.nnet.cuda()
 
     def train(self, examples):
-        optimizer = optim.Adam(self.nnet.parameters(), lr=args.lr)
+        decay, no_decay = [], []
+        for n,p in self.nnet.named_parameters():
+            (no_decay if p.ndim==1 or 'bn' in n.lower() else decay).append(p)
+        optimizer = torch.optim.AdamW(
+            [{'params': decay, 'weight_decay':1e-4},
+            {'params': no_decay, 'weight_decay':0.0}],
+            lr=args.lr, betas=(0.9,0.999)
+        )
+
+        #optimizer = optim.Adam(self.nnet.parameters(), lr=args.lr)
         # 推断棋盘边长 n（最后两维）
         b0 = examples[0][0]
         B0 = b0.astype(np.float32) if hasattr(b0, "astype") else np.array(b0, np.float32)

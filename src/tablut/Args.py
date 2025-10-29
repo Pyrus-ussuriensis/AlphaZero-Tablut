@@ -21,16 +21,19 @@ args = dotdict({
     'updateThreshold': 0.54,
 
     # 存档
-    'checkpoint': './temp/',
-    'load_model': True,
+    'checkpoint': './experiment/3/',
+    'load_model': False,
     'load_folder_file': 'best.pth.tar',
-    'experiment': 1,
+    'experiment': 3,
 
     # 根注噪（仅自博弈根）
     'dirichlet_alpha': 0.30,
     'noise_eps': 0.25,
     'limit': 100,
     'draw': -1e-6,
+    'cpuct_c_base': 19652,
+    'cpuct_c_init': 1.25,
+
 
     
 })

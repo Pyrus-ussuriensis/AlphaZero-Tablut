@@ -102,3 +102,8 @@ MCTS选择直接用1视角判断终局应该有误，应该以当前视角判断
 ## fix model output fault and add rules about draw
 网络的输出部分应该是从输入坐标到输出坐标，所以矩阵reshape前要转置。
 增加三次循环平局规则，避免资源浪费。
+
+## fix noise and use dynamic puct and add L2 loss
+噪声应该在训练中一直使用，同时应该使用动态噪声，根据合法动作的数量自动调整缩放。
+puct的C(s)随节点访问数增大
+对模型参数增加L2损失

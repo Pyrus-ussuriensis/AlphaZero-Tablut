@@ -64,7 +64,7 @@ class Coach():
             temp = int(episodeStep < self.args.tempThreshold)
 
             valids = self.game.getValidMoves(canonicalBoard, 1).astype(np.float32)
-            pi = self.mcts.getActionProb(canonicalBoard, temp=temp)
+            pi = self.mcts.getActionProb(canonicalBoard, temp=temp, noise_s=True)
             pi = pi*valids
             s = pi.sum()
             if s>0:
@@ -140,8 +140,8 @@ class Coach():
 
             self.nnet.train(trainExamples)
             #nmcts = MCTS(self.game, self.nnet, self.args)
-            pmcts_player = MCTSPlayer(self.game, self.pnet, self.args, temp=0)
-            nmcts_player = MCTSPlayer(self.game, self.nnet, self.args, temp=0)
+            pmcts_player = MCTSPlayer(self.game, self.pnet, self.args, temp=0, noise=False)
+            nmcts_player = MCTSPlayer(self.game, self.nnet, self.args, temp=0, noise=False)
 
             logger.info('PITTING AGAINST PREVIOUS VERSION')
             arena = Arena(pmcts_player, nmcts_player, self.game)
@@ -207,6 +207,7 @@ class Coach():
             "writer_path":writer.log_dir,
         }
         torch.save(parameters, os.path.join(self.args.checkpoint, "resume.pt"))
+        print(f"the meta data of the iteration {i} has been saved")
     
     def load_iteration_checkpoints(self):
         meta = torch.load(os.path.join(self.args.checkpoint, "resume.pt"), map_location="cpu")
