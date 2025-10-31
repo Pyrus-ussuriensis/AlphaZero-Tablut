@@ -15,11 +15,13 @@ class Board():
         self.done=0
         self._canon_flip = False        # 是否翻转（攻方视角）
         self._canon_flip_king = True    # 翻不翻王：True/False
+        self.pieces_count = len(self.pieces)
+        self.progress_count = 0
 
     def __str__(self):
         img = self.getImage()
         flat = ''.join(str(r) for v in img for r in v)
-        return f"{self.getPlayerToMove()}|t{self.time}|d{self.done}|{flat}" # 增加了终局值，避免出现同样的局面因超时结束与没有超时的影响
+        return f"{self.getPlayerToMove()}|c{self.progress_count}|t{self.time}|d{self.done}|{flat}" # 增加了终局值，避免出现同样的局面因超时结束与没有超时的影响
         #return f"{self.getPlayerToMove()}|d{self.done}|{flat}" # 增加了终局值，避免出现同样的局面因超时结束与没有超时的影响
 
     # add [][] indexer syntax to the Board
@@ -45,6 +47,8 @@ class Board():
       b.done=self.done
       b._canon_flip=self._canon_flip
       b._canon_flip_king=self._canon_flip_king
+      b.pieces_count = self.pieces_count
+      b.progress_count = self.progress_count
       return b
 
 
@@ -212,15 +216,26 @@ class Board():
       for c in caps:
           c[0]=-99
 
+      self._has_progress()
       self.done = self._getWinLose()
       
       return len(caps)
         
-
+    def _has_progress(self):
+        count = 0
+        for i in self.pieces:
+            if i[0] >= 0:
+                count+=1
+        if count < self.pieces_count:
+            self.pieces_count = count
+            self.progress_count = 0
+        else:
+            self.progress_count += 1
 
     def _getWinLose(self): # 胜负结果以白的视角给
         DRAW = args.draw
-        if self.time >= args.limit: return DRAW
+        if self.time >= args.limit or self.progress_count >= args.limit_progress:
+            return DRAW
         w = self.width - 1
         for apiece in self.pieces:
             if apiece[2]==2 and apiece[0] > -1:

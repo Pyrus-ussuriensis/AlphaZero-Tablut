@@ -5,7 +5,7 @@ args = dotdict({
     # 迭代与数据
     'numIters': 20,                       # 总轮数
     #'numIters': 120,                       # 总轮数
-    'numEps': 12,                          # 每轮自博弈局数（首轮样本稳过 batch）
+    'numEps': 2,                          # 每轮自博弈局数（首轮样本稳过 batch）
 
     #'numEps': 160,                          # 每轮自博弈局数（首轮样本稳过 batch）
     #'numEps': 384,                          # 每轮自博弈局数（首轮样本稳过 batch）
@@ -17,7 +17,7 @@ args = dotdict({
     'maxlenOfQueue': 200_000,              # 经验窗口
 
     # MCTS
-    'numMCTSSims': 32,    # 提升π质量
+    'numMCTSSims': 3,    # 提升π质量
 
     #'numMCTSSims': 200,    # 提升π质量
     #'numMCTSSims': 128,    # 提升π质量
@@ -45,6 +45,7 @@ args = dotdict({
     'dirichlet_alpha': 0.30,
     'noise_eps': 0.25,
     'limit': 100,
+    'limit_progress': 60,
     'draw': -1e-6,
     'cpuct_c_base': 19652,
     'cpuct_c_init': 1.25,
