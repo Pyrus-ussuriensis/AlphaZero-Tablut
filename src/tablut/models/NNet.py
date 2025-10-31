@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import random
 
 import numpy as np
 from tqdm import tqdm
@@ -13,7 +14,7 @@ from tablut.models.RandomData import RandomSymDataset
 
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 
 from tablut.models.MAZM import AlphaZeroNet_Tablut as onnet
 
@@ -24,8 +25,6 @@ from tablut.models.MAZM import AlphaZeroNet_Tablut as onnet
 args = dotdict({
     'lr': 1e-3,          # Adam常见默认；OpenSpiel等小盘面复现多取0.001。:contentReference[oaicite:8]{index=8}
     'dropout': 0.10,     # 0.1–0.3均可；为减少随机性先取0.1（工程折中；部分研究用到0.3）。:contentReference[oaicite:9]{index=9}
-    'epochs': 8,         # 小网+自博弈数据，6轮足够（再高易过拟合小集）
-    'batch_size': 64,   # 资源允许可128；不够就96（工程建议）
     'cuda': torch.cuda.is_available(),
     'num_channels': 128, # 轻量化以提高自博弈吞吐（工程建议）
     "policy_rank": 64,   # 双线性from×to头的嵌入维；32在精度/显存间折中（工程建议）
@@ -42,10 +41,10 @@ class NNetWrapper(NeuralNet):
         if args.cuda:
             self.nnet.cuda()
 
-    def train(self, examples):
+    def train(self, examples, batch_size, steps):
         decay, no_decay = [], []
-        for n,p in self.nnet.named_parameters():
-            (no_decay if p.ndim==1 or 'bn' in n.lower() else decay).append(p)
+        for i,p in self.nnet.named_parameters():
+            (no_decay if p.ndim==1 or 'bn' in i.lower() else decay).append(p)
         optimizer = torch.optim.AdamW(
             [{'params': decay, 'weight_decay':1e-4},
             {'params': no_decay, 'weight_decay':0.0}],
@@ -55,45 +54,46 @@ class NNetWrapper(NeuralNet):
         #optimizer = optim.Adam(self.nnet.parameters(), lr=args.lr)
         # 推断棋盘边长 n（最后两维）
         b0 = examples[0][0]
-        B0 = b0.astype(np.float32) if hasattr(b0, "astype") else np.array(b0, np.float32)
-        n = B0.shape[-1]; assert B0.shape[-2] == n, "board must be square"
-
+        #B0 = b0[0][0].astype(np.float32) if hasattr(b0, "astype") else np.array(b0, np.float32)
+        B0 = np.asarray(b0, np.float32)
+        n = B0.shape[-1]
         perms = action_perms(n)
-        dl = DataLoader(
-            RandomSymDataset(examples, n, perms),
-            batch_size=args.batch_size,
-            shuffle=True,
-            #num_workers=0,#getattr(args, "num_workers", 2),
-            pin_memory=True,#getattr(args, "cuda", False),
-            #persistent_workers=2,#getattr(args, "num_workers", 0) > 0,
-            drop_last=False,
-        )
 
-        for epoch in range(args.epochs):
-            print('EPOCH ::: ' + str(epoch + 1))
-            self.nnet.train()
-            pi_losses, v_losses = AverageMeter(), AverageMeter()
-            t = tqdm(dl, desc='Training Net')
-            for boards, target_pis, target_vs in t:
-                boards = boards.float()
-                target_pis = target_pis.float()
-                target_vs = target_vs.float()
 
-                if args.cuda:
-                    boards = boards.contiguous().cuda(non_blocking=True)
-                    target_pis = target_pis.contiguous().cuda(non_blocking=True)
-                    target_vs = target_vs.contiguous().cuda(non_blocking=True)
+        ds = RandomSymDataset(examples, n, perms)
+        total_samples = steps * batch_size
+        sampler = RandomSampler(ds, replacement=True, num_samples=total_samples)
+        dl = DataLoader(ds, batch_size=batch_size, sampler=sampler,
+                        drop_last=False, pin_memory=True)
 
-                out_pi, out_v = self.nnet(boards)
-                l_pi = self.loss_pi(target_pis, out_pi)
-                l_v  = self.loss_v (target_vs,  out_v)
-                loss = l_pi + l_v
+        #for step in range(steps):
+        #    print('STEP ::: ' + str(step+ 1))
+            #batch = random.choices(examples, k=batch_size)
+            #assert B0.shape[-2] == n, "board must be square"
 
-                pi_losses.update(l_pi.item(), boards.size(0))
-                v_losses.update(l_v.item(),  boards.size(0))
-                t.set_postfix(Loss_pi=pi_losses, Loss_v=v_losses)
+        self.nnet.train()
+        pi_losses, v_losses = AverageMeter(), AverageMeter()
+        t = tqdm(dl, desc='Training Net')
+        for boards, target_pis, target_vs in t:
+            boards = boards.float()
+            target_pis = target_pis.float()
+            target_vs = target_vs.float()
 
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+            if args.cuda:
+                boards = boards.contiguous().cuda(non_blocking=True)
+                target_pis = target_pis.contiguous().cuda(non_blocking=True)
+                target_vs = target_vs.contiguous().cuda(non_blocking=True)
+
+            out_pi, out_v = self.nnet(boards)
+            l_pi = self.loss_pi(target_pis, out_pi)
+            l_v  = self.loss_v (target_vs,  out_v)
+            loss = l_pi + l_v
+
+            pi_losses.update(l_pi.item(), boards.size(0))
+            v_losses.update(l_v.item(),  boards.size(0))
+            t.set_postfix(Loss_pi=pi_losses, Loss_v=v_losses)
+
+            optimizer.zero_grad(); loss.backward(); optimizer.step()
 
     def predict(self, board):
         """

@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 from collections import deque
 from pickle import Pickler, Unpickler
 from random import shuffle
@@ -15,7 +16,7 @@ from tablut.models.Players import MCTSPlayer
 from tablut.baselines.Elo_Cal import Evaluate_Model_with_Alpha_Beta
 from tablut.utils.log import logger, writer
 from tablut.utils.ThreefoldRepetition import ThreefoldRepetition
-from tablut.Args import args
+#from tablut.Args import args
 
 class Coach():
     """
@@ -61,7 +62,7 @@ class Coach():
         while True:
             episodeStep += 1
             canonicalBoard = self.game.getCanonicalForm(board, self.curPlayer)
-            temp = int(episodeStep < self.args.tempThreshold)
+            temp = 1 #int(episodeStep < self.args.tempThreshold)
 
             valids = self.game.getValidMoves(canonicalBoard, 1).astype(np.float32)
             pi = self.mcts.getActionProb(canonicalBoard, temp=temp, noise_s=True)
@@ -89,7 +90,7 @@ class Coach():
             # 记录状态，计数
             cnt = threefold.add_and_check(self.game.BoardRepresentation(canonicalBoard))
             if cnt:
-                r = args.draw
+                r = self.args.draw
 
             if r != 0:
                 return [(x[0], x[2], r * (x[1]), x[3], x[4]) for x in trainExamples]
@@ -128,17 +129,31 @@ class Coach():
             self.saveTrainExamples(i - 1)
 
             # shuffle examples before training
+            #k_per_iter = max(1, self.args.train_size // max(1, len(self.trainExamplesHistory)))    # 每轮配额
+
             trainExamples = []
             for e in self.trainExamplesHistory:
                 trainExamples.extend(e)
-            shuffle(trainExamples)
+            #    e = list(e)
+            #    if len(e) <= k_per_iter:
+            #        trainExamples.extend(e)
+            #    else:
+            #        trainExamples.extend(random.sample(e, k_per_iter))
+            #shuffle(trainExamples)
+
+            #N = max(1, len(trainExamples))
+            #epochs = max(2, math.ceil(self.args.step* self.args.batch_size/ N))
 
             # training new network, keeping a copy of the old one
             self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
             self.pnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
             #pmcts = MCTS(self.game, self.pnet, self.args)
 
-            self.nnet.train(trainExamples)
+            #batch = []
+            #for _ in range(self.args.step):
+            #    batch += random.choices(trainExamples, k=self.args.batch_size)
+            self.nnet.train(trainExamples, batch_size=self.args.batch_size, steps=self.args.step)
+
             #nmcts = MCTS(self.game, self.nnet, self.args)
             pmcts_player = MCTSPlayer(self.game, self.pnet, self.args, temp=0, noise=False)
             nmcts_player = MCTSPlayer(self.game, self.nnet, self.args, temp=0, noise=False)
