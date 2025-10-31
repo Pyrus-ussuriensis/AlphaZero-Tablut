@@ -15,7 +15,7 @@ if __name__=="__main__":
     if args.load_model:
         nnet.load_checkpoint(args.checkpoint, args.load_folder_file)
 
-    c = Coach(g, nnet, args)
+    c = Coach(g, nnet, args, ab_data=0)
     if args.load_model:
         print("Load trainExamples from file")
         c.loadTrainExamples()

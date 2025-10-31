@@ -15,8 +15,10 @@ from tablut.models.RandomData import RandomSymDataset
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, RandomSampler
+import torch.nn.functional as F
 
 from tablut.models.MAZM import AlphaZeroNet_Tablut as onnet
+from tablut.utils.smaller_actionspace import *
 
 
 
@@ -40,6 +42,9 @@ class NNetWrapper(NeuralNet):
 
         if args.cuda:
             self.nnet.cuda()
+        self.n = game.n
+        small2big, big2small = build_maps(game.n)
+        self.small2big, self.big2small = torch.from_numpy(small2big), torch.from_numpy(big2small)
 
     def train(self, examples, batch_size, steps):
         decay, no_decay = [], []
@@ -75,6 +80,7 @@ class NNetWrapper(NeuralNet):
         pi_losses, v_losses = AverageMeter(), AverageMeter()
         t = tqdm(dl, desc='Training Net')
         for boards, target_pis, target_vs in t:
+            target_pis = compress_big_to_small_pi(target_pis, self.big2small, self.n)
             boards = boards.float()
             target_pis = target_pis.float()
             target_vs = target_vs.float()
@@ -115,9 +121,16 @@ class NNetWrapper(NeuralNet):
         self.nnet.eval()
         with torch.no_grad():
             pi, v = self.nnet(x)
+        
+        pi = torch.exp(pi)
+        p_big = expand_small_to_big_probs(pi, self.small2big, self.n)
+        #P_big = (logits_big + mask_big)  # mask_big: 非法动作为 -∞，合法 0
+        #P_big = F.log_softmax(P_big, dim=1)  # or softmax 后概率
+
 
         # print('PREDICTION TIME TAKEN : {0:03f}'.format(time.time()-start))
-        return torch.exp(pi).data.cpu().numpy()[0], v.data.cpu().numpy()[0]
+        return p_big[0].cpu().numpy(), v.data.cpu().numpy()[0]
+        #return torch.exp(pi).data.cpu().numpy()[0], v.data.cpu().numpy()[0]
 
     def loss_pi(self, targets, outputs):
         return -torch.sum(targets * outputs) / targets.size()[0]

@@ -16,6 +16,7 @@ from tablut.models.Players import MCTSPlayer
 from tablut.baselines.Elo_Cal import Evaluate_Model_with_Alpha_Beta
 from tablut.utils.log import logger, writer
 from tablut.utils.ThreefoldRepetition import ThreefoldRepetition
+from tablut.baselines.alphabeta_player import AlphaBetaTaflPlayer
 #from tablut.Args import args
 
 class Coach():
@@ -24,7 +25,7 @@ class Coach():
     in Game and NeuralNet. args are specified in main.py.
     """
 
-    def __init__(self, game, nnet, args):
+    def __init__(self, game, nnet, args, ab_data=0):
         self.game = game
         self.nnet = nnet
         self.pnet = self.nnet.__class__(self.game)  # the competitor network
@@ -34,6 +35,7 @@ class Coach():
         self.skipFirstSelfPlay = False  # can be overriden in loadTrainExamples()
         self.start = 1 # 默认初始化为1，但是加载是会加载到上次
         self.meta = None
+        self.ab_data = ab_data
 
     # 控制训练，输出训练的记录用于训练
     def executeEpisode(self):
@@ -57,10 +59,10 @@ class Coach():
         threefold = ThreefoldRepetition(k=3)
         threefold.add_and_check(self.game.BoardRepresentation(board))
         self.curPlayer = 1
-        episodeStep = 0
+        #episodeStep = 0
 
         while True:
-            episodeStep += 1
+            #episodeStep += 1
             canonicalBoard = self.game.getCanonicalForm(board, self.curPlayer)
             temp = 1 #int(episodeStep < self.args.tempThreshold)
 
@@ -95,6 +97,38 @@ class Coach():
             if r != 0:
                 return [(x[0], x[2], r * (x[1]), x[3], x[4]) for x in trainExamples]
 
+    def executeEpisodeab(self):
+        trainExamples = []
+        board = self.game.getInitBoard()
+        threefold = ThreefoldRepetition(k=3)
+        threefold.add_and_check(self.game.BoardRepresentation(board))
+        self.curPlayer = 1
+
+        while True:
+            canonicalBoard = self.game.getCanonicalForm(board, self.curPlayer)
+
+            valids = self.game.getValidMoves(canonicalBoard, 1).astype(np.float32)
+            pi = self.ab.getActionProb(canonicalBoard)
+            pi = pi*valids
+            s = pi.sum()
+            if s>0:
+                pi = pi/s
+            else:
+                pi = valids/(valids.sum()+1e-8)
+
+            img2d = np.array(canonicalBoard.getImage(), dtype=np.int8)
+            trainExamples.append((img2d, self.curPlayer, np.asarray(pi, np.float32), canonicalBoard.time, canonicalBoard.size))
+            board, self.curPlayer = self.game.getNextState(board, self.curPlayer, np.random.choice(len(pi), p=pi))
+            r = self.game.getGameEnded(board, 1)
+            cnt = threefold.add_and_check(self.game.BoardRepresentation(canonicalBoard))
+            if cnt:
+                r = self.args.draw
+            if r != 0:
+                return [(x[0], x[2], r * (x[1]), x[3], x[4]) for x in trainExamples]
+
+
+
+
     # 总的学习流程，先训练，然后进行评估
     def learn(self):
         """
@@ -104,6 +138,15 @@ class Coach():
         It then pits the new neural network against the old one and accepts it
         only if it wins >= updateThreshold fraction of games.
         """
+        if self.ab_data > 0:
+            for i in range(self.ab_data):
+                iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
+                for _ in tqdm(range(self.args.numEps), desc="ab Self Play"):
+                    self.ab = AlphaBetaTaflPlayer(self.game)
+                    iterationTrainExamples += self.executeEpisodeab()
+
+                self.trainExamplesHistory.append(iterationTrainExamples)
+
 
 
         for i in range(self.start, self.args.numIters + 1):
