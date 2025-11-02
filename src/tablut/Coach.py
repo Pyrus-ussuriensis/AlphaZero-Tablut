@@ -35,7 +35,8 @@ class Coach():
         self.skipFirstSelfPlay = False  # can be overriden in loadTrainExamples()
         self.start = 1 # 默认初始化为1，但是加载是会加载到上次
         self.meta = None
-        self.ab_data = ab_data
+        self.ab_data = ab_data # 前面几轮alphabeta提供的数据
+        self.Elo = 0 # 目前最好的Elo值 预设Elo的增长和进化同步
 
     # 控制训练，输出训练的记录用于训练
     def executeEpisode(self):
@@ -138,7 +139,7 @@ class Coach():
         It then pits the new neural network against the old one and accepts it
         only if it wins >= updateThreshold fraction of games.
         """
-        if self.ab_data > 0 or self.start > 1:
+        if self.ab_data > 0 and self.start <= 1:
             for i in range(self.ab_data):
                 iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
                 for _ in tqdm(range(self.args.numEps), desc="ab Self Play"):
@@ -164,9 +165,15 @@ class Coach():
                 self.trainExamplesHistory.append(iterationTrainExamples)
 
             if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
-                logger.warning(
-                    f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
-                self.trainExamplesHistory.pop(0)
+                if self.Elo <= 1500:
+                    logger.warning(
+                        f"Removing the {self.ab_data} entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
+                    self.trainExamplesHistory.pop(self.ab_data)
+                else:
+                    logger.warning(
+                        f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
+                    self.trainExamplesHistory.pop(0)
+ 
             # backup history to a file
             # NB! the examples were collected using the model from the previous iteration, so (i-1)  
             self.saveTrainExamples(i - 1)
@@ -222,8 +229,8 @@ class Coach():
                 logger.info('ACCEPTING NEW MODEL')
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename=self.getCheckpointFile(i))
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='best.pth.tar')
-                Evaluate_Model_with_Alpha_Beta(new_model=nmcts_player, g=self.game, step=i, n=self.args.evaluate, write=True)
-            self.save_iteration_checkpoints(i)
+                self.Elo = Evaluate_Model_with_Alpha_Beta(new_model=nmcts_player, g=self.game, step=i, n=self.args.evaluate, write=True)
+            self.save_iteration_checkpoints(i, self.Elo)
 
     def getCheckpointFile(self, iteration):
         return 'checkpoint_' + str(iteration) + '.pth.tar'
@@ -259,9 +266,10 @@ class Coach():
             self.skipFirstSelfPlay = True
 
 
-    def save_iteration_checkpoints(self, i):
+    def save_iteration_checkpoints(self, i, Elo):
         parameters = {
             "i":i, # 当前轮数
+            "Elo":Elo,
             "writer_path":writer.log_dir,
         }
         torch.save(parameters, os.path.join(self.args.checkpoint, "resume.pt"))
@@ -270,6 +278,8 @@ class Coach():
     def load_iteration_checkpoints(self):
         meta = torch.load(os.path.join(self.args.checkpoint, "resume.pt"), map_location="cpu")
         self.start = meta["i"] + 1
+        self.Elo = meta.get("Elo", 0)
+        #self.Elo = meta["Elo"]
         self.meta = meta
         return meta
 

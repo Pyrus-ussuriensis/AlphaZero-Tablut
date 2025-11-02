@@ -93,8 +93,13 @@ def getNNImage(scalar, S, time):
     '''
     H, W = S, S
 
-    terrain = scalar // 10
-    piece   = scalar - terrain * 10
+    # 用更稳健的可逆拆分：scalar = terrain*10 + piece，piece ∈ [-2..2]
+    scalar = np.asarray(scalar, dtype=np.int16)  # 防止 int8 溢出/整除怪异
+    piece  = ((scalar + 2) % 10) - 2            # 先还原 piece（保留符号，范围[-2..2]）
+    terrain = (scalar - piece) // 10            # 再还原 terrain（0/1/2/...）
+    # 王座检测：直接用 terrain==2；现在拆分已正确，不会再被负子值“降位”
+
+
 
     my_pawn  = (piece == +1).astype(np.float32)
     opp_pawn = (piece == -1).astype(np.float32)

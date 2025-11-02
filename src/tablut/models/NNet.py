@@ -32,14 +32,25 @@ args = dotdict({
     "policy_rank": 64,   # 双线性from×to头的嵌入维；32在精度/显存间折中（工程建议）
 })
 
+'''
 def _round_lr_lambda(i: int) -> float:
-    r = i  # epoch从0计，轮次从1计
+    r = i  # i 为 0-based 轮次索引（第1轮传入0）
+    if r == 0:              return 0.5   # 预热 1 轮
+    if 1 <= r <= 9:         return 1.0   # 1–9：高LR（共9轮）
+    if 10 <= r <= 19:       return 0.6   # 10–19：中高LR（共10轮）
+    if 20 <= r <= 29:       return 0.3   # 20–29：中LR（共10轮）
+    if 30 <= r <= 39:       return 0.1   # 30–39：低LR（共10轮）
+    if 40 <= r <= 47:       return 0.05  # 40–47：更低LR（共8轮）
+    return 0.03                         # 48–49：尾声微收敛
+'''
+
+def _round_lr_lambda(i: int) -> float:
+    r = i # epoch从0计，轮次从1计
     if r == 0: return 0.5
     if 1 <= r <= 7: return 1.0
     if 8 <= r <= 15: return 0.3
     if 16 <= r <= 21: return 0.1
-    return 0.03  # r >= 25
-
+    return 0.03 # r >= 25
 
 class NNetWrapper(NeuralNet):
     def __init__(self, game):

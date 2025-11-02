@@ -120,3 +120,6 @@ puct的C(s)随节点访问数增大
 
 ## add lr automatic adjustment
 学习率自动调整，因为资源有限，需要快速出成果，所以使用AdamW，然后训练30轮
+
+## modify history pop rules
+为了更好的利用alphabeta生成的数据，我们修改规则，在分数高于1500后才放弃这份数据
