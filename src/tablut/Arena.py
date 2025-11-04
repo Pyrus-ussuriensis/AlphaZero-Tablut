@@ -9,7 +9,7 @@ class Arena():
     An Arena class where any 2 agents can be pit against each other.
     """
 
-    def __init__(self, player1, player2, game, display=None):
+    def __init__(self, player1, player2, game, display=None, on_step=None, on_end=None):
         """
         Input:
             player 1,2: two functions that takes board as input, return action
@@ -25,6 +25,8 @@ class Arena():
         self.player2 = player2
         self.game = game
         self.display = display
+        self.on_step = on_step
+        self.on_end = on_end
 
     def playGame(self, verbose=False):
         """
@@ -53,12 +55,25 @@ class Arena():
                 assert self.display
                 print("Turn ", str(it), "Player ", str(curPlayer))
                 self.display(board)
+            '''
             board = self.game.getCanonicalForm(board, curPlayer)
             
             action = players[curPlayer + 1](board)
             #board = self.game.getCanonicalForm(board, curPlayer)
             valids = self.game.getValidMoves(board, 1)
+            '''
             #valids = self.game.getValidMoves(board, 1)
+
+            # --- 决策端：AI 用 canonical；人类用原始 ---
+            cboard = self.game.getCanonicalForm(board, curPlayer)
+            player_fn = players[curPlayer + 1]
+            expects_canon = getattr(player_fn, "expects_canonical", True)
+            action = player_fn(cboard) if expects_canon else player_fn(board)
+            # --- 合法性校验：与上面所用棋盘保持一致 ---
+            if expects_canon:
+                valids = self.game.getValidMoves(cboard, 1)
+            else:
+                valids = self.game.getValidMoves(board, curPlayer)
 
             if valids[action] == 0:
                 logger.error(f'Action {action} is not valid!')
@@ -69,6 +84,13 @@ class Arena():
             opponent = players[-curPlayer + 1]
             if hasattr(opponent, "notify"):
                 opponent.notify(board, action)
+            
+            # --- 可视化：在推进状态前，抛出“当前局面 + 动作” ---
+            if callable(self.on_step):
+                try:
+                    self.on_step(board, curPlayer, action, it)
+                except Exception:
+                    pass
 
             board, curPlayer = self.game.getNextState(board, curPlayer, action)
 
@@ -80,7 +102,14 @@ class Arena():
             assert self.display
             print("Game over: Turn ", str(it), "Result ", str(self.game.getGameEnded(board, 1)))
             self.display(board)
-        return curPlayer * self.game.getGameEnded(board, curPlayer) # 总是以白方的视角记录结果
+#        return curPlayer * self.game.getGameEnded(board, curPlayer) # 总是以白方的视角记录结果
+        result = curPlayer * self.game.getGameEnded(board, curPlayer)  # 以白方视角
+        if callable(self.on_end):
+            try:
+                self.on_end(board, result, it)
+            except Exception:
+                pass
+        return result
 
     # 按照给的盘数，跑一半，交换棋子，跑另一半，返回最终记录的值
     def playGames(self, num, verbose=False):
@@ -103,10 +132,13 @@ class Arena():
             gameResult = self.playGame(verbose=verbose)
             if gameResult == 1:
                 oneWon += 1
+                t1+=1
             elif gameResult == -1:
                 twoWon += 1
+                t2+=1
             else:
                 draws += 1
+                t3+=1
         print(f"1w,2w,3e {t1}, {t2}, {t3}") # 第一个赢，第二个赢，平局，因为循环而平局
         t1, t2, t3 = 0, 0, 0
         
@@ -117,10 +149,13 @@ class Arena():
             gameResult = self.playGame(verbose=verbose)
             if gameResult == -1:
                 oneWon += 1
+                t1+=1
             elif gameResult == 1:
                 twoWon += 1
+                t2+=1
             else:
                 draws += 1
+                t3+=1
         print(f"1w,2w,3e {t1}, {t2}, {t3}") # 第一个赢，第二个赢，平局，因为循环而平局
 
         return oneWon, twoWon, draws

@@ -15,9 +15,9 @@ def elo_vs_ab(W,D,L, base=1500):
     ci = (delta-1.96*se_delta, delta+1.96*se_delta)
     return base+delta, delta, ci, s, sp # 基础加差，差，误差上下界，胜率，平滑胜率
 
-def Evaluate_Model_with_Alpha_Beta(new_model, g, step=0, n=200, write=False):
-    print("start calculating Elo scores base on 2 layers alpha-beta tree algorithm")
-    arena = Arena(player1=new_model, player2=AlphaBetaTaflPlayer(game=g, depth=2), game=g)
+def Evaluate_Model_with_Alpha_Beta(new_model, g, step=0, n=200, write=False, d=2):
+    print(f"start calculating Elo scores base on {d} layers alpha-beta tree algorithm")
+    arena = Arena(player1=new_model, player2=AlphaBetaTaflPlayer(game=g, depth=d), game=g)
     W, L, D = arena.playGames(num=n)
     elo, delta, (lo,hi), s, sp = elo_vs_ab(W,D,L, base=1500)
     if write:

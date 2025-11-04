@@ -248,7 +248,7 @@ class Board():
             self.pieces_count = count
             self.progress_count = 0
         else:
-            self.progress_unt += 1
+            self.progress_count += 1
 
     def _getWinLose(self): # 胜负结果以白的视角给
         DRAW = args.draw

@@ -46,8 +46,8 @@ args = dotdict({
     #'checkpoint': './experiment/6/',#####5
     #'checkpoint': './experiment/3/',
     #'checkpoint': './experiment/4_test/',
-    #'load_model': True,#####6
-    'load_model': False,
+    'load_model': True,#####6
+    #'load_model': False,
     'load_folder_file': 'best.pth.tar',
     'experiment': 6,#####7
     #'experiment': 6,#####7
