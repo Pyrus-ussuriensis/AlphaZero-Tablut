@@ -1,6 +1,12 @@
 # Solve the Bannerlord version of the Tablut with AlphaZero's method
+## Abstract
+We train an AlphaZero agent for the Bannerlord variant of Tablut on a 9&times;9 board. 
+After 15 iterations of self-play training, the agent **wins 32/32** against a depth-2 Alpha-Beta baseline under a fixed evaluation protocol (temperature=0, no Dirichlet noise, sides alternated). 
+Code includes training/evaluation, a GUI viewer with step mode, and built-in video recording for reproducible demos.
+本项目在 9&times;9 的 Bannerlord 规则 Tablut 上实现 AlphaZero。自博弈训练 15 轮后，在固定评测协议（温度 0、无根噪、先后手交替）下，对 2 层 Alpha-Beta **32/32 全胜**。仓库包含训练/评测脚本、带单步与录像功能的 GUI 可视化，便于复现与展示。
+
 ## Introduction
-在开始进行DRL的学习时，我就想要在最后解决Bannerlord中的古代棋。其中我对Tablut，也叫板棋或古典象棋比较感兴趣，因为其他的棋随机性比较强不太会玩。最后决定利用AlphaZero来解决，然后发现了alphazero-general这个项目，决定基于这个项目实现，但后来才发现这个项目对于AlphaZero实现可以说是漏洞百出。具体这个原始项目存在的问题和修改我放在[这里](/docs/azg_problems.md)，对于整个项目每个文件和函数的功能实现介绍我放在[这里](/docs/Explaination.md)，对于我的参数设置的说明我放在了[这里](/docs/Parameters_Management.md)，对于整个项目逐步修改的日志我放在了[这里](/docs/project_logs.md)。
+在开始进行DRL的学习时，我就想要在最后解决Bannerlord中的古代棋。其中我对Tablut，也叫板棋或古典象棋比较感兴趣，因为其他的棋随机性比较强不太会玩。最后决定利用AlphaZero来解决，然后发现了alphazero-general这个项目，决定基于这个项目实现，但后来才发现这个项目对于AlphaZero实现可以说是漏洞百出。具体这个原始项目存在的问题和修改我放在[这里](/docs/azg_problems.md)，对于整个项目每个文件和函数的功能实现介绍我放在[这里](/docs/Explanation.md)，对于我的参数设置的说明我放在了[这里](/docs/Parameters_Management.md)，对于整个项目逐步修改的日志我放在了[这里](/docs/project_logs.md)。
 ## Results Display
 Bannerlord中Tablut的规则是这样：
 1. 9&times;9棋盘，黑方（进攻方）16子对白方（防守方）8子。王从中宫起步；防守方把王走到任意边格即胜，进攻方吃掉王或让所有防守方无子可动即胜。
@@ -24,7 +30,7 @@ pip install -r docs/requirements.txt
 pip install -e .
 ```
 ### Train
-参数设置在src/tablut/Args.py中，具体docs/Explaination.md中提供了参数的功能介绍，docs/Parameters_Management.md提供了我设置参数的经验，运行mainTafl.py来开始训练。
+参数设置在src/tablut/Args.py中，具体docs/Explanation.md中提供了参数的功能介绍，docs/Parameters_Management.md提供了我设置参数的经验，运行mainTafl.py来开始训练。
 ### Compare
 可以在pitTafl.py中对各个模型统一进行比较。
 ### GUI play
@@ -42,7 +48,7 @@ baselines中除了原项目提供的随机和贪心模型，我也实现了新�
 ## Others
 ### Train Log Analysis
 ![alt text](docs/Elo.png)
-我的训练设计总共是30轮，但是在15，16局已经能够全胜alphabeta树，最后也仅仅训练到20轮。Elo分数设置是32局，这里分数存在波动，同时之后存在分数的下降。我的理解是因为我使用了1轮2层alphabeta树自博奕的数据。所以开始学习的比较快，但是相应的也有副作用，比如数据有巨大的区别，而老师数据的占比是1/i，逐步下降，同时在Elo分数超过2层alphabeta后会删除老师数据，造成的结果就应该是网络的能力是受到了alphabeta先验的影响，其能力应该有一定专门的优化，污染了自博奕进化的进程，所以在老师数据比例有巨大变化，甚至删除后网络的学习会有巨大影响，甚至会遗忘学习到的知识，导致能力下降。上面我提供的权重文件是手动保存的第二个全胜2层alphabeta树的权重，它在64轮比较中能够49胜15负第一个权重，但是演示都是用第一个做的。我提供了第二个权重文件在[这里](docs/best.pth.tar)
+我的训练设计总共是30轮，Elo评估是对弈32局，但是在15，16局已经能够全胜2层alphabeta树，最后也仅仅训练到20轮。Elo分数设置是32局，这里分数存在波动，同时之后存在分数的下降。我的理解是因为我使用了1轮2层alphabeta树自博奕的数据。所以开始学习的比较快，但是相应的也有副作用，比如数据有巨大的区别，而老师数据的占比是1/i，逐步下降，同时在Elo分数超过2层alphabeta后会删除老师数据，造成的结果就应该是网络的能力是受到了alphabeta先验的影响，其能力应该有一定专门的优化，污染了自博奕进化的进程，所以在老师数据比例有巨大变化，甚至删除后网络的学习会有巨大影响，甚至会遗忘学习到的知识，导致能力下降。上面我提供的权重文件是手动保存的第二个全胜2层alphabeta树的权重，它在64轮比较中能够49胜15负第一个权重，但是演示都是用第一个做的。我提供了第二个权重文件在[这里](docs/best.pth.tar)
 
 ## 
 ## Upstream & Acknowledgments

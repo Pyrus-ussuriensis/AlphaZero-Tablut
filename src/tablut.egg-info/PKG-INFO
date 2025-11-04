@@ -11,7 +11,7 @@ Dynamic: license-file
 
 # Solve the Bannerlord version of the Tablut with AlphaZero's method
 ## Introduction
-在开始进行DRL的学习时，我就想要在最后解决Bannerlord中的古代棋。其中我对Tablut，也叫板棋或古典象棋比较感兴趣，因为其他的棋随机性比较强不太会玩。最后决定利用AlphaZero来解决，然后发现了alphazero-general这个项目，决定基于这个项目实现，但后来才发现这个项目对于AlphaZero实现可以说是漏洞百出。具体这个原始项目存在的问题和修改我放在[这里](/docs/azg_problems.md)，对于整个项目每个文件和函数的功能实现介绍我放在[这里](/docs/Explaination.md)，对于我的参数设置的说明我放在了[这里](/docs/Parameters_Management.md)，对于整个项目逐步修改的日志我放在了[这里](/docs/project_logs.md)。
+在开始进行DRL的学习时，我就想要在最后解决Bannerlord中的古代棋。其中我对Tablut，也叫板棋或古典象棋比较感兴趣，因为其他的棋随机性比较强不太会玩。最后决定利用AlphaZero来解决，然后发现了alphazero-general这个项目，决定基于这个项目实现，但后来才发现这个项目对于AlphaZero实现可以说是漏洞百出。具体这个原始项目存在的问题和修改我放在[这里](/docs/azg_problems.md)，对于整个项目每个文件和函数的功能实现介绍我放在[这里](/docs/Explanation.md)，对于我的参数设置的说明我放在了[这里](/docs/Parameters_Management.md)，对于整个项目逐步修改的日志我放在了[这里](/docs/project_logs.md)。
 ## Results Display
 Bannerlord中Tablut的规则是这样：
 1. 9&times;9棋盘，黑方（进攻方）16子对白方（防守方）8子。王从中宫起步；防守方把王走到任意边格即胜，进攻方吃掉王或让所有防守方无子可动即胜。
@@ -35,7 +35,7 @@ pip install -r docs/requirements.txt
 pip install -e .
 ```
 ### Train
-参数设置在src/tablut/Args.py中，具体docs/Explaination.md中提供了参数的功能介绍，docs/Parameters_Management.md提供了我设置参数的经验，运行mainTafl.py来开始训练。
+参数设置在src/tablut/Args.py中，具体docs/Explanation.md中提供了参数的功能介绍，docs/Parameters_Management.md提供了我设置参数的经验，运行mainTafl.py来开始训练。
 ### Compare
 可以在pitTafl.py中对各个模型统一进行比较。
 ### GUI play
