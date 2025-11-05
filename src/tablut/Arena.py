@@ -54,7 +54,7 @@ class Arena():
                 assert self.display
                 print("Turn ", str(it), "Player ", str(curPlayer))
                 self.display(board)
-            #'''
+            '''
             board = self.game.getCanonicalForm(board, curPlayer)
             
             action = players[curPlayer + 1](board)
@@ -73,7 +73,6 @@ class Arena():
                 valids = self.game.getValidMoves(cboard, 1)
             else:
                 valids = self.game.getValidMoves(board, curPlayer)
-            '''
 
             if valids[action] == 0:
                 logger.error(f'Action {action} is not valid!')
@@ -85,14 +84,12 @@ class Arena():
             if hasattr(opponent, "notify"):
                 opponent.notify(board, action)
             
-            '''
             # --- 可视化：在推进状态前，抛出“当前局面 + 动作” ---
             if callable(self.on_step):
                 try:
                     self.on_step(board, curPlayer, action, it)
                 except Exception:
                     pass
-            '''
 
             board, curPlayer = self.game.getNextState(board, curPlayer, action)
 
@@ -104,8 +101,7 @@ class Arena():
             assert self.display
             print("Game over: Turn ", str(it), "Result ", str(self.game.getGameEnded(board, 1)))
             self.display(board)
-        return curPlayer * self.game.getGameEnded(board, curPlayer) # 总是以白方的视角记录结果
-        '''
+        #return curPlayer * self.game.getGameEnded(board, curPlayer) # 总是以白方的视角记录结果
         result = curPlayer * self.game.getGameEnded(board, curPlayer)  # 以白方视角
         if callable(self.on_end):
             try:
@@ -113,7 +109,6 @@ class Arena():
             except Exception:
                 pass
         return result
-        '''
 
     # 按照给的盘数，跑一半，交换棋子，跑另一半，返回最终记录的值
     def playGames(self, num, verbose=False):
